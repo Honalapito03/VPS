@@ -11,3 +11,6 @@ if __name__ == "__main__":
     N = Network(argmax_beta=300.0, device=device).to(device)
     T = transform(img_o, R = -170, S=1, X=100, Y=100, device=device)
     res, cr1, cr2 = N(img_o, T, True)
+
+    "HELOOOOOO"
+    
