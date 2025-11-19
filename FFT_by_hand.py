@@ -12,7 +12,7 @@ def recursive_fft(x):
     else:
         # FFT of even and odd indexed elements
         X_even = recursive_fft(x[::2])
-        X_odd  = recursive_fft(x[1::2])
+        X_odd  = recursive_fft(x[1::2])kjbjhvbjgv
         
         # Combine
         factor = np.exp(-2j * np.pi * np.arange(N) / N)
