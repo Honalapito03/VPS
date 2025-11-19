@@ -64,7 +64,7 @@ class Network(torch.nn.Module):
         template = self.convA(template)
         cr = self.phase_correlation(img - torch.mean(img), template - torch.mean(template))  # (1,1,H,W)
         res = tu.soft_argmax_2d(cr.real, beta=self.argmax_beta)
-        print(res)
+        print("result: ", res, cr.shape)
         if self.plot:
           for b in range(img.size()[0]):
               tu.imshow("phase corr", cr[b][0].real.detach().cpu().numpy())
@@ -106,7 +106,7 @@ class Network(torch.nn.Module):
         #print("real cord:", res  * torch.tensor([cr.shape[2], cr.shape[3]], device=self.device) + torch.tensor([cr.shape[2] // 2, cr.shape[3] // 2], device=self.device))
         rotation = -1 * res[:, 1] * 360 # in degrees
         cy, cx = (img.shape[3] / 2, img.shape[2] / 2)
-        r = torch.log(torch.sqrt(torch.tensor(cy**2 + cx**2, device=self.device)))
+        r = torch.log(torch.tensor(max(cy / 2, cx / 2), device=self.device))
         scale = torch.pow(torch.e, r * res[:, 0])
 
         #true direction
