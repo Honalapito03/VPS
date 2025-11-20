@@ -36,10 +36,10 @@ class map_tile():
     def coverage_test(self, coordinate:Coordinates): 
         r1 = resolution / 2 * coordinate.s
 
-        required_distance = (self.r + r1) / 2
+        required_distance = (self.r + r1) 
         x_y_distance = ((self.coordinate.x - coordinate.x)**2 + (self.coordinate.y - coordinate.y)**2 )**0.5
 
-        return((x_y_distance / required_distance) < 0.5)
+        return (required_distance - x_y_distance)/required_distance
 
 
 
@@ -48,7 +48,12 @@ def image_taking():
     pass
 
 def ref_pic_find(coordinates:Coordinates, tiles:list[map_tile]) -> list[map_tile]:
-    pass
+    good_tiles = []
+    for tile in tiles:
+        if tile.coverage_test(coordinates) > 0.3:
+            good_tiles.append(tile)
+    return good_tiles
+#Can be optimized further
 
 def FMT(picture:np.ndarray, template:np.ndarray):
     pass
@@ -70,19 +75,24 @@ def main():
 
     px_mm = 1
 
+    last_ref = tiles[0]
     while True:
         pic = image_taking()
-        refs = ref_pic_find(pos,tiles)
-
-        pos_estimation = []
-
+        approx_pos = FMT(pic, last_ref.image)
+        refs = ref_pic_find(approx_pos,tiles)
+        last_cov = last_ref.coverage_test(approx_pos)
+        pos_estimation = [approx_pos]
+    
         for ref in refs:
             temp = FMT(pic, ref.image)
             pos_estimation.append(ref.coordinate.combine(temp)) #chain
-        
+            if ref.coverage_test(approx_pos) > last_cov:
+                last_ref = ref
+                last_cov = ref.coverage_test(approx_pos)
+
         pos = rec_merge(pos_estimation)
 
-        if (not any([ref.coverage_test(pos) for ref in refs])):
+        if (last_ref.coverage_test(pos) < 0.5):
             tiles.append(map_tile(pic,pos))
 
             

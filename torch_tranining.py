@@ -77,7 +77,7 @@ def transform(  img_o,
     m[1, 0] = torch.sin(R * np.pi / 180) * 1 / S
     m[1, 1] = torch.cos(R * np.pi / 180) * 1 / S
 
-    return(tu.warp(img_o, m, img_o.size()[2:]))
+    return(tu.warp(img_o, m, (img_o.size()[3], img_o.size()[2])))
 
 
 def training(img_o, batch_num, steps_in_epoch, epoch, device="cuda"):

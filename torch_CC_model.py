@@ -178,7 +178,7 @@ class Network(torch.nn.Module):
                 tu.imshow("img", p_img / 255)
                 tu.imshow("template", p_temp / 255)
                 #imshow("rotated image torch", (torch.clamp(r_i[0].transpose(0, 2).transpose(0, 1).cpu().detach(), 0, 255).numpy()*0.5).astype(np.uint8) + p_img * 0.5)
-
+                print("Final transform (r, s, x,y): ",r.item(), s.item(), x.item(), y.item())
 
                 m2 = torch.tensor([[1, 0, -x], [0, 1, -y]], device=self.device)
                 translated_image = tu.warp(r_i * 255, m2, (p_img.shape[1], p_img.shape[0]))
