@@ -94,5 +94,3 @@ def main():
 
         if (last_ref.coverage_test(pos) < 0.5):
             tiles.append(map_tile(pic,pos))
-
-            
