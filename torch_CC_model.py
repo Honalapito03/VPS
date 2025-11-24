@@ -37,16 +37,7 @@ class Network(torch.nn.Module):
     def phase_correlation(self, A, B):
 
         A = fft.fft2(A)
-        #for b in range(A.size()[0]):
-            #for c in range(A.size()[1]):
-                #A[b][c]=fft.fftshift(A[b][c])
-
         B = fft.fft2(B)
-        #for b in range(B.size()[0]):
-            #for c in range(B.size()[1]):
-                #B[b][c]=fft.fftshift(B[b][c])
-
-        #B[:, :, B.shape[2] // 2 - 1: B.shape[2] // 2 + 1, B.shape[3] // 2 - 1: B.shape[3] // 2 + 1] *= 0
 
         cpsd = self._CPSD(A, B)
         res = fft.ifft2(cpsd)
@@ -57,14 +48,11 @@ class Network(torch.nn.Module):
 
     def calculate_shift(self, img, template):
         #CONV A
-        print("mean", torch.mean(img))
         img = self.convA(img - torch.mean(img))
-        print(torch.mean(img - torch.mean(img)))
 
         template = self.convA(template)
         cr = self.phase_correlation(img - torch.mean(img), template - torch.mean(template))  # (1,1,H,W)
         res = tu.soft_argmax_2d(cr.real, beta=self.argmax_beta)
-        print("result: ", res, cr.shape)
         if self.plot:
           for b in range(img.size()[0]):
               tu.imshow("phase corr", cr[b][0].real.detach().cpu().numpy())
@@ -87,8 +75,6 @@ class Network(torch.nn.Module):
             for c in range(te.size()[1]):
                 te[b][c] = fft.fftshift(te[b][c]).abs()
 
-        tu.imshow("log rota", (im.real/torch.max(im.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255)
-        tu.imshow("log rota temp", (te.real/torch.max(te.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255)
 
         imf = tu.log_polar_transform_torch(im.real, output_shape=self.resolution, device=self.device)
         tempF = tu.log_polar_transform_torch(te.real, output_shape=self.resolution, device=self.device)
@@ -98,6 +84,9 @@ class Network(torch.nn.Module):
         tempF *= (torch.linspace(0, 5, tempF.size()[2])**5).expand(tempF.size()[0], tempF.size()[1], tempF.size()[2], tempF.size()[3]).to(self.device).transpose(2, 3)
 
         if self.plot:
+
+            tu.imshow("log rota", (im.real/torch.max(im.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255)
+            tu.imshow("log rota temp", (te.real/torch.max(te.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255)
             tu.imshow("log polar", (imf.real/torch.max(imf.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy())
             tu.imshow("log polar temp", (tempF.real/torch.max(tempF.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy())
 
@@ -122,11 +111,11 @@ class Network(torch.nn.Module):
         rotation_matrix_t[:, 0, 1] = -1 *torch.sin(rotation_t * np.pi / 180) * scale
         rotation_matrix_t[:, 1, 0] = torch.sin(rotation_t * np.pi / 180) * scale
         rotation_matrix_t[:, 1, 1] = torch.cos(rotation_t * np.pi / 180) * scale
-        print("ROTATION: ", rotation, rotation_t)
 
-        return rotation, scale, rotation_matrix, rotation_matrix_t, cr
+        return rotation, rotation_t, scale, rotation_matrix, rotation_matrix_t, cr
 
     def forward(self, img_o, template_o, plot=False):
+
         self.plot = plot
         img = img_o.clone() / 255
         template = template_o.clone() / 255
@@ -135,7 +124,7 @@ class Network(torch.nn.Module):
             #print(img.shape, template.shape)
             pass
 
-        r, s, m, m_t, cr1 = self.get_rotation_scale(img, template)
+        r, r_t, s, m, m_t, cr1 = self.get_rotation_scale(img, template)
 
         if plot:
             #print(m_t)
@@ -145,27 +134,20 @@ class Network(torch.nn.Module):
         r_i = tu.warp(template, m, (img_o.shape[3], img_o.shape[2]))
         r_i_t = tu.warp(template, m_t, (img_o.shape[3], img_o.shape[2]))
 
-
-        if plot:
-            #print(img.shape, r_i.shape)
-            #for b in range(img_o.size()[0]):
-                #plt.title("Rota")
-                #plt.imshow(r_i[b].transpose(0, 2).transpose(0, 1).detach().cpu().numpy(), cmap="gray")
-                #plt.show()
-            pass
-
         #CONV D
         pos, cr2 = self.calculate_shift(self.convD(img), self.convD(r_i))
         pos_t, cr2_t = self.calculate_shift(self.convD(img), self.convD(r_i_t))
-        print("CR2s: ", cr2.argmax(), cr2_t.argmax(), torch.special.entr(cr2.abs()).mean(), torch.special.entr(cr2_t.abs()).mean())
         e = torch.special.entr(cr2.abs()).mean()
         e_t = torch.special.entr(cr2_t.abs()).mean()
         pos = pos if e < e_t else pos_t
         r_i = r_i if e < e_t else r_i_t
+        r = r if e < e_t else r_t
 
         if plot:
             #print(m_t)
             print("POS: ", pos)
+            print("CR2s: ", cr2.argmax(), cr2_t.argmax(), torch.special.entr(cr2.abs()).mean(), torch.special.entr(cr2_t.abs()).mean())
+
             pass
         if plot:
             for b in range(img_o.size()[0]):
