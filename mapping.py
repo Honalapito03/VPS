@@ -100,13 +100,56 @@ class Mapper():
         pos_estimation = [approx_pos]
     
         for ref in refs:
-            temp = FMT(pic, ref.image)
-            pos_estimation.append(ref.coordinate.combine(temp)) #chain
-            if ref.coverage_test(approx_pos) > last_cov:
-                last_ref = ref
-                last_cov = ref.coverage_test(approx_pos)
+            if ref != self.last_ref:
+                temp = self.FMT(ref.image, pic)
+                pos_estimation.append(ref.coordinate.combine(temp)) #chain
+                if ref.coverage_test(approx_pos, self.resolution) > last_cov:
+                    self.last_ref = ref
+                    last_cov = ref.coverage_test(approx_pos, self.resolution)
 
-        pos = rec_merge(pos_estimation)
+        self.pos = self.rec_merge(pos_estimation)
 
-        if (last_ref.coverage_test(pos) < 0.5):
-            tiles.append(map_tile(pic,pos))
+        if (self.last_ref.coverage_test(self.pos, self.resolution) < 0.5):
+            self.tiles.append(map_tile(pic, self.pos, self.resolution))
+            self.last_ref = self.tiles[-1]
+
+        print(self.pos.x,self.pos.y,self.pos.s,self.pos.r)
+        print(len(self.tiles))
+        print("----")
+
+    def ref_pic_find(self, coordinates:Coordinates, tiles:list[map_tile]) -> list[map_tile]:
+        good_tiles = []
+        for tile in tiles:
+            if tile.coverage_test(coordinates, self.resolution) > 1:
+                good_tiles.append(tile)
+        return good_tiles
+    #Can be optimized further
+
+
+    def FMT(self, picture:np.ndarray, template:np.ndarray) -> Coordinates:
+        img_o = torch.tensor(picture, dtype=torch.float32, device=self.device).transpose(0, 2).transpose(1, 2).unsqueeze(0)[:, :, 2:-2, 2:-2]
+        temp_o = torch.tensor(template, dtype=torch.float32, device=self.device).transpose(0, 2).transpose(1, 2).unsqueeze(0)[:, :, 2:-2, 2:-2]
+        res, _, _ = self.N(img_o, temp_o, False)
+        print("FMT result:", res)
+
+        return Coordinates(res[0][2].item() * self.resolution,res[0][3].item() * self.resolution,res[0][1].item(),res[0][0].item())
+
+
+    def rec_merge(self, coordinates:list) -> Coordinates:
+        if len(coordinates) > 2:
+            f_ck_recursion = self.rec_merge(coordinates[:len(coordinates)//2])
+            i_hate_recursion = self.rec_merge(coordinates[len(coordinates)//2:])
+            return f_ck_recursion.merge(i_hate_recursion)
+        elif len(coordinates) == 2:
+            return coordinates[0].merge(coordinates[1])
+        else:
+            return coordinates[0]
+
+
+if __name__ == "__main__":
+    m = Mapper()
+    m.start()
+    for _ in range(12):
+        m.loop_step()
+
+            
