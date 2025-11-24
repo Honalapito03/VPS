@@ -14,7 +14,6 @@ import random
 from torch_CC_model import Network
 from torch_tranining import transform
 
-resolution = 100
 
 class Coordinates():
     def __init__(self,x,y,s,r):
@@ -27,7 +26,6 @@ class Coordinates():
 
     def combine(self, other): #other is Coordinates :)
         vector = np.array([other.x,other.y,1])
-        print(vector,self.affine_matrix)
         t_vector =  self.affine_matrix @ vector
         return Coordinates(t_vector[0],t_vector[1],self.s*other.s,(self.r+other.r)%360)
     
@@ -54,13 +52,13 @@ class Coordinates():
         )
 
 class map_tile():
-    def __init__(self,image:np.ndarray,coordinate:Coordinates):
+    def __init__(self,image:np.ndarray,coordinate:Coordinates, resolution):
         self.image = image
         self.coordinate = coordinate
         self.coordinate.create_affine_matrix()
         self.r = resolution / 2 * coordinate.s
 
-    def coverage_test(self, coordinate:Coordinates): 
+    def coverage_test(self, coordinate:Coordinates, resolution): 
         r1 = resolution / 2 * coordinate.s
 
         required_distance = (self.r + r1) 
@@ -69,77 +67,89 @@ class map_tile():
         return (required_distance - x_y_distance)/required_distance
 
 
+class Mapper():
+    def __init__(self, ):
+        self.resolution = 100
+        self.px_mm = 1
+        self.tiles = []
+        self.pos = None
+        self.last_ref = None
+        self.current_image = 0
+        self.device = "cpu"
+        self.N = Network(argmax_beta=300.0, device=self.device).to(self.device)
 
+
+
+    def start(self):
+        #Initial map tile
+        #main: outside of for
+        self.tiles=[map_tile(self.current_image, Coordinates(0,0,1,0), self.resolution)]
+        self.pos = Coordinates(0,0,0,0)
+        self.last_ref = self.tiles[0]
+
+
+    def loop_step(self):
+        pic = self.current_image
         
-def image_taking(image_count):
-    return image_count
+        #early testing
+        self.current_image += 1
 
-def ref_pic_find(coordinates:Coordinates, tiles:list[map_tile]) -> list[map_tile]:
-    good_tiles = []
-    for tile in tiles:
-        if tile.coverage_test(coordinates) > 1:
-            good_tiles.append(tile)
-    return good_tiles
-#Can be optimized further
-
-def FMT(picture:np.ndarray, template:np.ndarray):
-    r_x = random.randint(-50,50)
-    r_y = random.randint(-50,50)
-
-    print("FMT ",template)
-
-    return Coordinates(110,0,1,30)
-
-def rec_merge(coordinates:list):
-    if len(coordinates) > 2:
-        f_ck_recursion = rec_merge(coordinates[:len(coordinates)//2])
-        i_hate_recursion = rec_merge(coordinates[len(coordinates)//2:])
-        return f_ck_recursion.merge(i_hate_recursion)
-    elif len(coordinates) == 2:
-        return coordinates[0].merge(coordinates[1])
-    else:
-        return coordinates[0]
-
-def main():
-
-    image_count = 0
-
-    tiles=[map_tile(image_taking(image_count),Coordinates(0,0,1,0))]
-
-    pos = Coordinates(0,0,0,0)
-
-    px_mm = 1
-
-    last_ref = tiles[0]
-    for e in range(12):
-
-        image_count += 1
-
-        pic = image_taking(image_count)
-        approx_pos = last_ref.coordinate.combine(FMT(pic, last_ref.image))
-        refs = ref_pic_find(approx_pos,tiles)
-        last_cov = last_ref.coverage_test(approx_pos)
+        approx_pos = self.last_ref.coordinate.combine(self.FMT(self.last_ref.image, pic))
+        refs = self.ref_pic_find(approx_pos, self.tiles)
+        last_cov = self.last_ref.coverage_test(approx_pos, self.resolution)
         pos_estimation = [approx_pos]
     
         for ref in refs:
-            if ref != last_ref:
-                temp = FMT(pic, ref.image)
+            if ref != self.last_ref:
+                temp = self.FMT(ref.image, pic)
                 pos_estimation.append(ref.coordinate.combine(temp)) #chain
-                if ref.coverage_test(approx_pos) > last_cov:
-                    last_ref = ref
-                    last_cov = ref.coverage_test(approx_pos)
+                if ref.coverage_test(approx_pos, self.resolution) > last_cov:
+                    self.last_ref = ref
+                    last_cov = ref.coverage_test(approx_pos, self.resolution)
 
-        pos = rec_merge(pos_estimation)
+        self.pos = self.rec_merge(pos_estimation)
 
-        if (last_ref.coverage_test(pos) < 0.5):
-            tiles.append(map_tile(pic,pos))
-            last_ref = tiles[-1]
+        if (self.last_ref.coverage_test(self.pos, self.resolution) < 0.5):
+            self.tiles.append(map_tile(pic, self.pos, self.resolution))
+            self.last_ref = self.tiles[-1]
 
-        print(pos.x,pos.y,pos.s,pos.r)
-        print(len(tiles))
-        print(last_ref.image)
-        print()
+        print(self.pos.x,self.pos.y,self.pos.s,self.pos.r)
+        print(len(self.tiles))
+        print("----")
 
-main()
+    def ref_pic_find(self, coordinates:Coordinates, tiles:list[map_tile]) -> list[map_tile]:
+        good_tiles = []
+        for tile in tiles:
+            if tile.coverage_test(coordinates, self.resolution) > 1:
+                good_tiles.append(tile)
+        return good_tiles
+    #Can be optimized further
+
+
+    def FMT(self, picture:np.ndarray, template:np.ndarray) -> Coordinates:
+        img_o = torch.tensor(picture, dtype=torch.float32, device=self.device).transpose(0, 2).transpose(1, 2).unsqueeze(0)[:, :, 2:-2, 2:-2]
+        temp_o = torch.tensor(template, dtype=torch.float32, device=self.device).transpose(0, 2).transpose(1, 2).unsqueeze(0)[:, :, 2:-2, 2:-2]
+        res, _, _ = self.N(img_o, temp_o, False)
+        print("FMT result:", res)
+
+        return Coordinates(res[0][2].item() * self.resolution,res[0][3].item() * self.resolution,res[0][1].item(),res[0][0].item())
+
+
+    def rec_merge(self, coordinates:list) -> Coordinates:
+        if len(coordinates) > 2:
+            f_ck_recursion = self.rec_merge(coordinates[:len(coordinates)//2])
+            i_hate_recursion = self.rec_merge(coordinates[len(coordinates)//2:])
+            return f_ck_recursion.merge(i_hate_recursion)
+        elif len(coordinates) == 2:
+            return coordinates[0].merge(coordinates[1])
+        else:
+            return coordinates[0]
+
+
+if __name__ == "__main__":
+    m = Mapper()
+    m.start()
+    for _ in range(12):
+        m.loop_step()
 
             
