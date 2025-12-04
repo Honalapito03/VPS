@@ -1,3 +1,5 @@
+#written by GPT-4 based on user instructions but heavily modified by human
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -9,16 +11,22 @@ import mapping
 # Load an example image
 # ==========================
 mapper = mapping.Mapper()
-mapper.resolution = 697
+mapper.take_history = True
 
 
-img = np.array(Image.open("horse0.jpg"), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
+img = np.array(Image.open("shangai images/DJI_20201217154322_0100_W.JPG").resize((1000, 1000), Image.Resampling.BICUBIC), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
+img = np.mean(img, axis=2)
 h, w = img.shape[:2]
+mapper.resolution = max(h, w)
+mapper.x_res = h
+mapper.y_res = w
 
+#color map gray
 fig, ax = plt.subplots()
-ax.imshow(img / 255)
+ax.imshow(img / 255, cmap='gray')
 plt.title("Drag = move | Scroll = scale | Right-drag = rotate | ENTER = crop")
 plt.axis('off')
+ax.colormap = 'gray'
 
 # ==========================
 # Rectangle state variables
@@ -96,7 +104,7 @@ def extract_crop():
     tx = transformed[:, 0].reshape(xv.shape).astype(int)
     ty = transformed[:, 1].reshape(yv.shape).astype(int)
 
-    crop = np.zeros((xv.shape[0], xv.shape[1], 3), dtype=np.float32)
+    crop = np.zeros((xv.shape[0], xv.shape[1]), dtype=np.float32)
     mask = (tx >= 0) & (tx < w) & (ty >= 0) & (ty < h)
     crop[mask] = img[ty[mask], tx[mask]]
 
@@ -174,7 +182,10 @@ def on_key(event):
 
         # 1. Save crop
         extract_crop()
+        print("GT: ", (center[1] - h / 2) * 2, (center[0] - w/2) *2, 1/scale, -angle)
         mapper.loop_step()
+        mapper.add_gt((center[1] - h / 2) * 2, (center[0] - w/2) *2, 1/scale, -angle)
+
 
 
         # 2. Save the rectangle position permanently
@@ -209,5 +220,6 @@ update_rectangle()
 extract_crop()
 
 mapper.start()
-
 plt.show()
+
+mapper.export_history("mapping_history.xlsx")
