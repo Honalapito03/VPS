@@ -5,11 +5,22 @@ import torch.nn as nn
 
 
 
-def imshow(title, img):
-    plt.figure(figsize=(8, 6))
-    plt.imshow(img)
-    plt.axis("off")
-    plt.title(title)
+def imshow(title, img:list[list]):
+    fig, ax = plt.subplots(len(img), len(img[0]))
+    for i in range(len(img)):
+        for j in range(len(img[0])):
+            if len(img) == 1 and len(img[0]) == 1:
+                ax.imshow(img[i][j])
+                ax.axis("off")
+            elif len(img) == 1:
+                ax[j].imshow(img[i][j])
+                ax[j].axis("off")
+            elif len(img[0]) == 1:
+                ax[i].imshow(img[i][j])
+                ax[i].axis("off")
+            else:
+                ax[i][j].imshow(img[i][j])
+                ax[i][j].axis("off")
     plt.show()
 
 
@@ -45,7 +56,7 @@ def warp(
         img,
         grid,
         mode=mode,
-        padding_mode=padding_mode,
+        padding_mode="zeros",
         align_corners=align_corners
     )
 
@@ -113,7 +124,7 @@ def log_polar_transform_torch(image, output_shape=None, center=None, interpolati
 
     # Interpolate
     mode = "bicubic" if interpolation == "bicubic" else "bilinear"
-    log_polar_img = F.grid_sample(image, grid, mode=mode, align_corners=True, padding_mode="border")
+    log_polar_img = F.grid_sample(image, grid, mode=mode, align_corners=True, padding_mode="zeros")
 
     return log_polar_img
 
@@ -208,3 +219,29 @@ def soft_argmax_2d(heatmap: torch.Tensor, beta=100.0):
 
     return expected
 
+def signal_to_noise(heatmap: torch.Tensor):
+    """
+    Signal to noise ratio of a 2D heatmap.
+
+    Parameters
+    ----------
+    heatmap : (N, 1, H, W) torch.Tensor
+
+    Returns
+    -------
+    snr : (N,) tensor
+        Signal to noise ratio.
+    """
+    N, C, H, W = heatmap.shape
+
+    heatmap = heatmap.sum(1)  # (N, 1, H, W)
+
+    # Flatten
+    heatmap_flat = heatmap.reshape(N, -1)
+
+    max_val, _ = torch.max(heatmap_flat, dim=-1)  # (N,)
+    mean_val = torch.std(heatmap_flat, dim=-1)   # (N,)
+
+    snr = max_val / (mean_val + 1e-15)  # Avoid division by zero
+
+    return snr

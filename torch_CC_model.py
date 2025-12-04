@@ -55,7 +55,7 @@ class Network(torch.nn.Module):
         res = tu.soft_argmax_2d(cr.real, beta=self.argmax_beta)
         if self.plot:
           for b in range(img.size()[0]):
-              tu.imshow("phase corr", cr[b][0].real.detach().cpu().numpy())
+              tu.imshow("phase corr", [[cr[b][0].real.detach().cpu().numpy()]])
               pass
         return( (res - torch.tensor([cr.shape[2] // 2, cr.shape[3] // 2], device=self.device)) / torch.tensor([cr.shape[2], cr.shape[3]], device=self.device) # shift to center
               , cr.real)
@@ -85,10 +85,12 @@ class Network(torch.nn.Module):
 
         if self.plot:
 
-            tu.imshow("log rota", (im.real/torch.max(im.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255)
-            tu.imshow("log rota temp", (te.real/torch.max(te.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255)
-            tu.imshow("log polar", (imf.real/torch.max(imf.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy())
-            tu.imshow("log polar temp", (tempF.real/torch.max(tempF.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy())
+            tu.imshow("log rota", [[(im.real/torch.max(im.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255, 
+                                    (te.real/torch.max(te.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255
+                                    ], 
+                                    [(imf.real/torch.max(imf.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255,
+                                     (tempF.real/torch.max(tempF.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255
+                                    ]])
 
         #CONV C
         res, cr = self.calculate_shift(self.convC(imf), self.convC(tempF))
@@ -157,9 +159,6 @@ class Network(torch.nn.Module):
 
                 x, y = pos[b, 1] * img_o.shape[3], pos[b, 0] * img_o.shape[2]
 
-                tu.imshow("img", p_img / 255)
-                tu.imshow("template", p_temp / 255)
-                #imshow("rotated image torch", (torch.clamp(r_i[0].transpose(0, 2).transpose(0, 1).cpu().detach(), 0, 255).numpy()*0.5).astype(np.uint8) + p_img * 0.5)
                 print("Final transform (r, s, x,y): ",r.item(), s.item(), x.item(), y.item())
 
                 m2 = torch.tensor([[1, 0, -x], [0, 1, -y]], device=self.device)
@@ -167,7 +166,8 @@ class Network(torch.nn.Module):
 
                 im_copy2 = translated_image[b].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 0.5 + p_img * 0.5
 
-                tu.imshow("rotated translated template", (im_copy2 / 255))
+
+                tu.imshow("img", [[p_img / 255, p_temp / 255],[r_i[b].detach().transpose(0, 2).transpose(0, 1).cpu().numpy(), im_copy2 / 255]])
 
         return(torch.concat([r.unsqueeze(1), s.unsqueeze(1), pos], 1), cr1, cr2)
 

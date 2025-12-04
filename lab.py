@@ -14,18 +14,19 @@ mapper = mapping.Mapper()
 mapper.take_history = True
 
 
-img = np.array(Image.open("shangai images/DJI_20201217154322_0100_W.JPG").resize((1000, 750), Image.Resampling.BICUBIC), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
+img = np.array(Image.open("shangai images/DJI_20201217154322_0100_W.JPG").resize((1000, 1000), Image.Resampling.BICUBIC), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
 img = np.mean(img, axis=2)
 h, w = img.shape[:2]
 mapper.resolution = max(h, w)
 mapper.x_res = h
 mapper.y_res = w
 
-
+#color map gray
 fig, ax = plt.subplots()
-ax.imshow(img / 255)
+ax.imshow(img / 255, cmap='gray')
 plt.title("Drag = move | Scroll = scale | Right-drag = rotate | ENTER = crop")
 plt.axis('off')
+ax.colormap = 'gray'
 
 # ==========================
 # Rectangle state variables
@@ -181,8 +182,10 @@ def on_key(event):
 
         # 1. Save crop
         extract_crop()
+        print("GT: ", (center[1] - h / 2) * 2, (center[0] - w/2) *2, 1/scale, -angle)
         mapper.loop_step()
         mapper.add_gt((center[1] - h / 2) * 2, (center[0] - w/2) *2, 1/scale, -angle)
+
 
 
         # 2. Save the rectangle position permanently

@@ -16,13 +16,16 @@ from torch_tranining import transform
 
 
 class Coordinates():
-    def __init__(self,x,y,s,r):
+    def __init__(self,x,y,s,r, rs_snr=1, xy_snr=1):
         self.x = x
         self.y = y
         self.s = s
         self.r = r
         self.phi = (r/180)*math.pi
         self.affine_matrix = None
+
+        self.rs_snr = rs_snr
+        self.xy_snr = xy_snr
 
     def combine(self, other): #other is Coordinates :)
         vector = np.array([other.x,other.y,1])
@@ -40,14 +43,20 @@ class Coordinates():
         average_cos = (cos_r + cos_other_r) / 2
 
         averaged_angle = math.atan2(average_sin, average_cos)
-        return Coordinates((self.x+other.x)/2, (self.y+other.y)/2,(self.s+other.s)/2,(averaged_angle/math.pi)*180) #make shorter
+        return Coordinates( (self.x+other.x)/2, 
+                            (self.y+other.y)/2,
+                            (self.s+other.s)/2,
+                            (averaged_angle/math.pi)*180, 
+                            (self.rs_snr + other.rs_snr)/2,
+                            (self.xy_snr + other.xy_snr)/2
+                           ) #make shorter
     
 
     def create_affine_matrix(self):
         self.affine_matrix = np.array(
             [
-                [self.s*(math.cos(self.phi)), -self.s*(math.sin(self.phi)), self.x],
-                [self.s*(math.sin(self.phi)),  self.s*(math.cos(self.phi)), self.y],
+                [(math.cos(self.phi)) / self.s, - (math.sin(self.phi)) / self.s, self.x],
+                [(math.sin(self.phi)) / self.s,  (math.cos(self.phi)) / self.s, self.y],
                 [                        0,                         0,           1],
             ]
         )
@@ -127,12 +136,13 @@ class Mapper():
 
         self.pos = self.rec_merge(pos_estimation)
 
-        if (self.last_ref.coverage_test(self.pos, self.resolution) < 0.5):
+        if (self.last_ref.coverage_test(self.pos, self.resolution) < 0.85):
             self.tiles.append(map_tile(pic, self.pos, self.resolution))
             self.last_ref = self.tiles[-1]
 
-        print(self.pos.x,self.pos.y,self.pos.s,self.pos.r)
-        print(len(self.tiles))
+        print("Calculated: ", self.pos.x,self.pos.y,self.pos.s,self.pos.r)
+        print("data: ", len(self.tiles), len(refs), self.last_ref.coverage_test(self.pos, self.resolution))
+        
         print("----")
 
         #History
@@ -155,17 +165,18 @@ class Mapper():
     def ref_pic_find(self, coordinates:Coordinates, tiles:list[map_tile]) -> list[map_tile]:
         good_tiles = []
         for tile in tiles:
-            if tile.coverage_test(coordinates, self.resolution) > 1:
+            if tile.coverage_test(coordinates, self.resolution) > 0.7:
                 good_tiles.append(tile)
         return good_tiles
     #Can be optimized further
 
 
     def FMT(self, picture:np.ndarray, template:np.ndarray) -> Coordinates:
-        img_o = torch.tensor(picture, dtype=torch.float32, device=self.device).unsqueeze(2).transpose(0, 2).transpose(1, 2).unsqueeze(0)[:, :, 2:-2, 2:-2]
-        temp_o = torch.tensor(template, dtype=torch.float32, device=self.device).unsqueeze(2).transpose(0, 2).transpose(1, 2).unsqueeze(0)[:, :, 2:-2, 2:-2]
-        res, _, _ = self.N(img_o, temp_o, False)
-        print("FMT result:", res)
+        print("template: ", picture)
+        img_o = torch.tensor(picture, dtype=torch.float32, device=self.device).unsqueeze(2).transpose(0, 2).transpose(1, 2).unsqueeze(0)
+        temp_o = torch.tensor(template, dtype=torch.float32, device=self.device).unsqueeze(2).transpose(0, 2).transpose(1, 2).unsqueeze(0)
+        res, cr1, cr2 = self.N(img_o, temp_o, False)
+        print("FMT result: ", res, "signal to noise: ", tu.signal_to_noise(cr1), tu.signal_to_noise(cr2))
 
         return Coordinates(res[0][2].item() * self.x_res, res[0][3].item() * self.y_res, res[0][1].item(), res[0][0].item())
 
