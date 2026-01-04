@@ -88,8 +88,8 @@ class Network(torch.nn.Module):
             tu.imshow("log rota", [[(im.real/torch.max(im.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255, 
                                     (te.real/torch.max(te.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255
                                     ], 
-                                    [(imf.real/torch.max(imf.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255,
-                                     (tempF.real/torch.max(tempF.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy() * 255
+                                    [(imf.real/torch.max(imf.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy(),
+                                     (tempF.real/torch.max(tempF.real))[0].transpose(0, 2).transpose(0, 1).detach().cpu().numpy()
                                     ]])
 
         #CONV C
