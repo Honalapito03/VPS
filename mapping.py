@@ -117,9 +117,6 @@ class Mapper():
 
     def loop_step(self):
         pic = self.current_image
-        
-        #early testing
-        self.current_image += 1
 
         approx_pos = self.last_ref.coordinate.combine(self.FMT(self.last_ref.image, pic))
         refs = self.ref_pic_find(approx_pos, self.tiles)
@@ -172,7 +169,6 @@ class Mapper():
 
 
     def FMT(self, picture:np.ndarray, template:np.ndarray) -> Coordinates:
-        print("template: ", picture)
         img_o = torch.tensor(picture, dtype=torch.float32, device=self.device).unsqueeze(2).transpose(0, 2).transpose(1, 2).unsqueeze(0)
         temp_o = torch.tensor(template, dtype=torch.float32, device=self.device).unsqueeze(2).transpose(0, 2).transpose(1, 2).unsqueeze(0)
         res, cr1, cr2 = self.N(img_o, temp_o, False)
@@ -183,9 +179,9 @@ class Mapper():
 
     def rec_merge(self, coordinates:list) -> Coordinates:
         if len(coordinates) > 2:
-            f_ck_recursion = self.rec_merge(coordinates[:len(coordinates)//2])
-            i_hate_recursion = self.rec_merge(coordinates[len(coordinates)//2:])
-            return f_ck_recursion.merge(i_hate_recursion)
+            first = self.rec_merge(coordinates[:len(coordinates)//2])
+            secund = self.rec_merge(coordinates[len(coordinates)//2:])
+            return first.merge(secund)
         elif len(coordinates) == 2:
             return coordinates[0].merge(coordinates[1])
         else:

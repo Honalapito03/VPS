@@ -14,7 +14,7 @@ mapper = mapping.Mapper()
 mapper.take_history = True
 
 
-img = np.array(Image.open("shangai images/DJI_20201217154322_0100_W.JPG").resize((1000, 1000), Image.Resampling.BICUBIC), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
+img = np.array(Image.open("underwater_images/T_S02951.png").resize((1000, 1000), Image.Resampling.BICUBIC), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
 img = np.mean(img, axis=2)
 h, w = img.shape[:2]
 mapper.resolution = max(h, w)
@@ -109,11 +109,6 @@ def extract_crop():
     crop[mask] = img[ty[mask], tx[mask]]
 
     mapper.current_image = crop
-
-
-    
-    
-
 
 
 # ==========================

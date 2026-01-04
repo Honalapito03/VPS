@@ -17,7 +17,7 @@ def load_image_as_grayscale(path):
 def read_image_dataset(directory):
     images = []
     for filename in sorted(os.listdir(directory)):
-        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
             img_path = os.path.join(directory, filename)
             img = load_image_as_grayscale(img_path)
             images.append((filename, img))
@@ -56,7 +56,6 @@ def run_tests_on_dataset(image_dir, gt_file):
     mapper.start() 
     for (filename, img), gt in zip(images[1:], read_ground_truth(gt_file)):
         print(f"Processing image: {filename}")
-        print(img)
         mapper.current_image = img
         mapper.loop_step()
         mapper.add_gt(gt["x"], gt["y"], gt["scale"], gt["rotation"])
@@ -65,7 +64,11 @@ def run_tests_on_dataset(image_dir, gt_file):
 
 
 if __name__ == "__main__":
-    run_tests_on_dataset("Map_set_1", "Map_set_1/Dataset.xlsx")
+    for file in os.listdir("TEST_DATA/"):
+        if os.path.isdir("TEST_DATA/" + file):
+            print("Running test on dataset: ", file)
+            run_tests_on_dataset("TEST_DATA/" + file, "TEST_DATA/" + file +"/Dataset.xlsx")
+    #run_tests_on_dataset("TEST_DATA/" + file, "TEST_DATA/" + file +"/Dataset.xlsx")
 
 
     
