@@ -5,16 +5,16 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import Affine2D
 from PIL import Image
-import mapping
+import SLAM
 
 # ==========================
 # Load an example image
 # ==========================
-mapper = mapping.Mapper()
+mapper = SLAM.Mapper()
 mapper.take_history = True
 
 
-img = np.array(Image.open("underwater_images/T_S02951.png").resize((1000, 1000), Image.Resampling.BICUBIC), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
+img = np.array(Image.open("test_images/underwater_images/T_S02951.png").resize((1000, 1000), Image.Resampling.BICUBIC), dtype=np.float32)[2:-2, 2:-2]  # Change to your image
 img = np.mean(img, axis=2)
 h, w = img.shape[:2]
 mapper.resolution = max(h, w)

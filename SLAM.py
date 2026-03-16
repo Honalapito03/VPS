@@ -12,7 +12,7 @@ import random
 import xlsxwriter
 
 from torch_CC_model import Network
-from torch_tranining import transform
+from torch_utils import transform
 
 
 class Coordinates():

@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import torch.nn as nn
+import numpy as np
 
 
 
@@ -245,3 +246,25 @@ def signal_to_noise(heatmap: torch.Tensor):
     snr = max_val / (mean_val + 1e-15)  # Avoid division by zero
 
     return snr
+
+
+def transform(  img_o,
+                R = 0,
+                S = 1,
+                X = 0,
+                Y = 0,
+             device ="cuda"):
+    #IMPORTANT: First translates, then rotates and scales from the midpoint
+    R = torch.tensor([R])
+    S = torch.tensor([S])
+    X = torch.tensor([X])
+    Y = torch.tensor([Y])
+    m = torch.zeros((2, 3), device=device)
+    m[0, 2] = -X
+    m[1, 2] = -Y
+    m[0, 0] = torch.cos(R * np.pi / 180) * 1 / S
+    m[0, 1] = -1 *torch.sin(R * np.pi / 180) * 1 / S
+    m[1, 0] = torch.sin(R * np.pi / 180) * 1 / S
+    m[1, 1] = torch.cos(R * np.pi / 180) * 1 / S
+
+    return(warp(img_o, m, (img_o.size()[3], img_o.size()[2])))

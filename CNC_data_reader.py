@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import os
-import mapping
+import SLAM
 import pandas as pd
 
 def load_image_as_grayscale(path):
@@ -45,7 +45,7 @@ def read_ground_truth(file_path):
 def run_tests_on_dataset(image_dir, gt_file):
     images = read_image_dataset(image_dir)[1:-1]
 
-    mapper = mapping.Mapper()
+    mapper = SLAM.Mapper()
     mapper.current_image = images[0][1]
     mapper.resolution = max(images[0][1].shape)
     mapper.x_res = images[0][1].shape[1]
